@@ -1,31 +1,57 @@
 import mongoose from "mongoose";
+import dns from "dns";
 
-let cached = global.mongoose;
+// Custom DNS servers
+dns.setServers(["8.8.8.8", "8.8.4.4"]);
 
-if (!cached) cached = global.mongoose = { conn: null, promise: null };
+// Override DNS lookup to handle SRV records
+const originalLookup = dns.lookup;
+const originalResolveSrv = dns.resolveSrv;
+
+// Patch DNS methods
+dns.resolveSrv = (hostname, callback) => {
+   console.log(`SRV lookup for: ${hostname}`);
+
+   if (hostname === "_mongodb._tcp.cluster0.fmaocsf.mongodb.net") {
+      // Manual SRV response
+      const mockSrvRecords = [
+         {
+            name: "cluster0-shard-00-00.fmaocsf.mongodb.net",
+            port: 27017,
+            priority: 10,
+            weight: 1,
+         },
+         {
+            name: "cluster0-shard-00-01.fmaocsf.mongodb.net",
+            port: 27017,
+            priority: 10,
+            weight: 1,
+         },
+         {
+            name: "cluster0-shard-00-02.fmaocsf.mongodb.net",
+            port: 27017,
+            priority: 10,
+            weight: 1,
+         },
+      ];
+      callback(null, mockSrvRecords);
+   } else {
+      originalResolveSrv(hostname, callback);
+   }
+};
 
 const connectDB = async () => {
-  console.log("🌐 Trying to connect to MongoDB...");
-  if (cached.conn) {
-    console.log("♻️ Using cached MongoDB connection");
-    return cached.conn;
-  }
-
-  if (!cached.promise) {
-    cached.promise = mongoose
-      .connect(process.env.MONGO_URI)
-      .then((mongoose) => {
-        console.log("✅ MongoDB Connected Successfully");
-        return mongoose;
-      })
-      .catch((err) => {
-        console.error("❌ MongoDB Connection Error:", err);
-        throw err;
+   try {
+      await mongoose.connect(process.env.MONGO_URI, {
+         serverSelectionTimeoutMS: 10000,
+         family: 4,
       });
-  }
 
-  cached.conn = await cached.promise;
-  return cached.conn;
+      console.log("✅ Database Connected");
+   } catch (err) {
+      console.error("❌ Error:", err.message);
+      process.exit(1);
+   }
 };
 
 export default connectDB;

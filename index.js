@@ -26,6 +26,10 @@ import SupportRoutes from "./routes/SupportRoutes.js";
 import DashboardRoutes from "./routes/DashboardRoutes.js";
 import { allowedOrigins } from "./utils/AllowedOrigins.js";
 
+// Cloudinary
+import { v2 as cloudinary } from "cloudinary";
+import fileUpload from "express-fileupload";
+
 dotenv.config();
 
 const app = express();
@@ -40,30 +44,30 @@ app.use(express.json());
 // app.use(express.urlencoded({ extended: true }));
 
 app.use(
-  cors({
-    origin: allowedOrigins,
-    credentials: true,
-    methods: ["POST", "GET", "PATCH", "DELETE"],
-  })
+   cors({
+      origin: "*",
+      credentials: true,
+      methods: ["POST", "GET", "PATCH", "DELETE"],
+   }),
 );
 
 // === Security Header Middleware ===
 if (process.env.NODE_ENV !== "production") {
-  app.use(
-    "/uploads",
-    (req, res, next) => {
-      const origin = req.headers.origin;
-      if (allowedOrigins.includes(origin)) {
-        res.header("Access-Control-Allow-Origin", origin);
-      }
-      res.header("Access-Control-Allow-Methods", "GET");
-      res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-      next();
-    },
-    express.static("uploads")
-  );
+   app.use(
+      "/uploads",
+      (req, res, next) => {
+         const origin = req.headers.origin;
+         if (allowedOrigins.includes(origin)) {
+            res.header("Access-Control-Allow-Origin", origin);
+         }
+         res.header("Access-Control-Allow-Methods", "GET");
+         res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+         next();
+      },
+      express.static("uploads"),
+   );
 } else {
-  console.log("⚠️ Skipping /uploads static serve in production");
+   console.log("⚠️ Skipping /uploads static serve in production");
 }
 
 // === Rate Limiter
@@ -72,8 +76,22 @@ app.use(RateLimiter);
 // === Logger Middleware for logging errors
 app.use(ErrorLogger);
 
+// === Cloudinary Configuration ===
+cloudinary.config({
+   cloud_name: process.env.CLOUDINARY_Cloud,
+   api_secret: process.env.CLOUDINARY_API_SECRET,
+   api_key: process.env.CLOUDINARY_API_KEY,
+});
+
+app.use(
+   fileUpload({
+      useTempFiles: true,
+      tempFileDir: "/tmp/",
+   }),
+);
+
 app.get("/", (req, res) => {
-  res.status(200).json({ message: "OK!" });
+   res.status(200).json({ message: "OK!" });
 });
 
 // // === Routes ===
@@ -95,8 +113,8 @@ app.use(ErrorHandler);
 // === Server Start ===
 const PORT = process.env.PORT || 5000;
 
-// app.listen(PORT, () => {
-//   console.log(`🚀 Server running on http://localhost:${PORT}`);
-// });
+app.listen(PORT, () => {
+   console.log(`🚀 Server running on http://localhost:${PORT}`);
+});
 
 export default app;
