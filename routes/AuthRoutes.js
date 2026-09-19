@@ -4,11 +4,8 @@ import validate from "../middlewares/ValidationHandler.js";
 import { loginSchema, adminSchema, userSchema } from "../validations/AuthValidations.js";
 import AuthMiddleware from "../middlewares/AuthMiddleware.js";
 import AccessMiddleware from "../middlewares/AccessMiddleware.js";
-import { createRequire } from "module";
 
 const router = express.Router();
-
-const require = createRequire(import.meta.url);
 
 router.post("/register", validate(adminSchema), register);
 
